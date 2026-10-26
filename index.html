@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#000000">
+<title>StudyLoop – AI 학습 & 컨디션 케어 플래너</title>
+<style>
+:root{--bg:#000;--card:#141414;--pri:#fff;--pri2:#262626;--tx:#f0f0f0;--sub:#9a9a9a;--bd:#333;color-scheme:dark}
+svg text{fill:#ddd}a{color:#fff}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Malgun Gothic",sans-serif;background:var(--bg);color:var(--tx);padding-bottom:70px;filter:grayscale(1)}
+header{background:#000;border-bottom:1px solid #333;color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+header h1{margin:0;font-size:20px}header small{opacity:.75;display:block;font-size:12px}
+header .btn{background:#fff;color:#000;padding:6px 10px;font-size:13px}
+main{max-width:780px;margin:0 auto;padding:12px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:12px}
+.card h2{margin:0 0 8px;font-size:16px}.card h3{margin:10px 0 4px;font-size:14px}
+nav{position:fixed;bottom:0;left:0;right:0;background:#000;border-top:1px solid #333;display:flex;z-index:5}
+nav button{flex:1;border:0;background:none;padding:7px 0;font-size:10px;color:#999;cursor:pointer}
+nav button b{display:block;font-size:18px;font-weight:400}
+nav button.on{color:#fff;font-weight:700}
+.btn{background:#fff;color:#000;border:1px solid #fff;border-radius:8px;padding:8px 13px;font-size:14px;cursor:pointer}
+.btn.sec{background:transparent;color:#fff;border-color:#666}.btn.bad{background:transparent;color:#ccc;border:1px dashed #777}.btn.sm{padding:4px 9px;font-size:12px}
+.btn:disabled{opacity:.4}
+input,select,textarea{width:100%;padding:8px;border:1px solid #555;border-radius:8px;font:inherit;background:#1c1c1c;color:#fff}
+textarea{min-height:80px}
+label{display:block;font-size:12px;color:var(--sub);margin:8px 0 3px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:end}.row>*{flex:1;min-width:100px}.row>.btn{flex:0 0 auto}
+.muted{color:var(--sub);font-size:13px}
+.pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;background:var(--pri2);color:#fff;border:1px solid #555}
+.pill.dark{background:#fff;color:#000;border-color:#fff}
+.score{font-size:40px;font-weight:800}
+.slot{display:flex;gap:10px;padding:8px 0;border-bottom:1px dashed var(--bd);align-items:center}
+.slot:last-child{border:0}.slot .t{width:92px;font-size:12px;color:var(--sub);flex:none}.slot .n{flex:1}
+.slot.busy .n{color:#aaa;font-style:italic}.slot.brk .n{color:#888}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal div{min-height:54px;border:1px solid var(--bd);border-radius:6px;padding:3px;font-size:10px;cursor:pointer;background:var(--card);overflow:hidden;line-height:1.35}
+.cal .h{min-height:0;border:0;text-align:center;color:var(--sub);cursor:default;font-size:12px}
+.cal .today{border:2px solid #fff}.cal .off{border:1px dashed #aaa;background:repeating-linear-gradient(45deg,#1a1a1a,#1a1a1a 5px,#262626 5px,#262626 10px)}.cal .sel{background:#fff;color:#000}
+.cal .exam{font-weight:800;text-decoration:underline}
+.timer{font-size:54px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums}
+details{margin:6px 0}summary{cursor:pointer;font-weight:600;font-size:14px}
+.q{padding:8px 0;border-bottom:1px solid var(--bd)}.q label{display:flex;gap:6px;align-items:center;color:var(--tx);font-size:14px;margin:3px 0}
+.q label input{width:auto}
+.q.right{background:#2a2a2a;border-left:4px solid #fff;padding-left:6px}.q.wrong{background:transparent;border-left:4px dashed #fff;padding-left:6px}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:84px;background:#fff;color:#000;padding:9px 16px;border-radius:99px;font-size:13px;display:none;z-index:9;max-width:90%}
+.en{line-height:1.8;font-size:16px;white-space:pre-wrap}
+.bar{background:#333;border-radius:4px;height:14px;overflow:hidden}.bar i{display:block;height:100%;background:#fff}
+.seg{display:flex;gap:6px;margin:6px 0}.seg .btn{flex:1}
+.thumb{max-width:140px;max-height:140px;border:1px solid var(--bd);border-radius:8px}
+.big{font-size:30px;font-weight:800}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.grid3>div{border:1px solid var(--bd);border-radius:10px;padding:8px;text-align:center}
+.mode{border:2px solid #fff;border-radius:10px;padding:8px;margin-bottom:12px;font-size:13px}
+</style>
+</head>
+<body>
+<header><div><h1>🔁 StudyLoop</h1><small>AI 학습 & 컨디션 케어 플래너</small></div><div><button class="btn" data-act="mode" id="modeBtn"></button> <button class="btn" data-act="tab" data-t="settings">⚙</button></div></header>
+<main id="main"></main>
+<nav id="nav"></nav>
+<div id="toast"></div>
+
+<script>
+"use strict";
+/* ========== 유틸 ========== */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad = n => String(n).padStart(2, "0");
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const today = () => ymd(new Date());
+const addDays = (s, n) => { const d = new Date(s + "T00:00:00"); d.setDate(d.getDate() + n); return ymd(d); };
+const diffDays = (a, b) => Math.round((new Date(b + "T00:00:00") - new Date(a + "T00:00:00")) / 864e5);
+const toMin = t => { const [h, m] = (t || "0:0").split(":").map(Number); return h * 60 + m; };
+const fmt = m => { m = ((Math.round(m) % 1440) + 1440) % 1440; return `${pad(Math.floor(m/60))}:${pad(m%60)}`; };
+const uid = () => Math.random().toString(36).slice(2, 9);
+const compact = s => s.replace(/-/g, "");
+const dashed = s => `${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}`;
+const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+const r1 = x => Math.round(x * 10) / 10;
+function toast(msg, ms = 3000) { const t = $("#toast"); t.textContent = msg; t.style.display = "block"; clearTimeout(toast.h); toast.h = setTimeout(() => t.style.display = "none", ms); }
+const val = id => ($("#" + id) || {}).value || "";
+
+/* ========== 저장소 (모든 데이터는 이 기기의 localStorage에만 저장) ========== */
+const KEY = "studyloop.v2";
+const defaults = () => ({
+  settings: { apiKey: "", model: "gemini-2.0-flash", mode: "school", wakeS: "06:50", sleepS: "23:00", wakeV: "08:00", sleepV: "24:00",
+    schoolStart: "08:40", schoolEnd: "15:30", period: 50, neisKey: "", grade: "", cls: "", proxy: "allorigins" },
+  subjects: [], materials: [], events: [], memos: [], exams: [], dayOffs: [], sleep: {}, usage: {}, reviews: [], quizzes: {}, quizLog: [],
+  studyLog: [], workbook: [], english: {}, wbDone: {}, notes: [], plan: {}, school: null,
+  neis: { timetable: {}, meals: {}, sched: {} }, ai: {}
+});
+let S = (() => { try { return Object.assign(defaults(), JSON.parse(localStorage.getItem(KEY)) || {}); } catch { return defaults(); } })();
+S.settings = Object.assign(defaults().settings, S.settings);
+S.neis = Object.assign(defaults().neis, S.neis);
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(S)); return true; }
+  catch { toast("저장 공간이 가득 찼습니다. 오래된 자료를 삭제해 주세요."); return false; }
+}
+const isSchool = () => S.settings.mode === "school";
+const isOff = d => S.dayOffs.includes(d);
+
+/* ========== Gemini ========== */
+async function gemini(parts, json = true) {
+  const k = S.settings.apiKey.trim();
+  if (!k) throw new Error("설정에서 Gemini API 키를 먼저 입력해 주세요.");
+  const body = { contents: [{ parts }] };
+  if (json) body.generationConfig = { responseMimeType: "application/json" };
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(S.settings.model)}:generateContent?key=${encodeURIComponent(k)}`,
+    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error((j.error && j.error.message) || ("AI 호출 실패 (" + r.status + ")"));
+  const txt = ((j.candidates || [])[0]?.content?.parts || []).map(p => p.text || "").join("");
+  if (!json) return txt;
+  try { return JSON.parse(txt.replace(/^```json|```$/g, "").trim()); }
+  catch { throw new Error("AI 응답을 해석하지 못했습니다. 다시 시도해 주세요."); }
+}
+const QUIZ_SCHEMA = `"quiz":[{"q":"문제","choices":["보기1","보기2","보기3","보기4"],"answer":0,"explain":"해설"}]`;
+
+/* ========== NEIS (학교 · 시간표 · 급식 · 학사일정) ========== */
+const PROXIES = { allorigins: u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u), corsproxy: u => "https://corsproxy.io/?" + encodeURIComponent(u) };
+async function fetchProxy(url, min = 500) {
+  const order = [S.settings.proxy, ...Object.keys(PROXIES).filter(k => k !== S.settings.proxy)];
+  for (const p of order) {
+    try { const r = await fetch(PROXIES[p](url)); if (r.ok) { const t = await r.text(); if (t.length > min) return t; } } catch { }
+  }
+  throw new Error("프록시 접속 실패");
+}
+async function neis(ep, params) {
+  const key = S.settings.neisKey.trim();
+  const q = new URLSearchParams({ Type: "json", pIndex: "1", pSize: key ? "1000" : "5", ...params });
+  if (key) q.set("KEY", key);
+  const url = `https://open.neis.go.kr/hub/${ep}?${q}`;
+  let txt;
+  try { const r = await fetch(url); txt = await r.text(); } catch { txt = await fetchProxy(url, 2); }
+  const j = JSON.parse(txt);
+  if (j.RESULT && !j[ep]) { if (j.RESULT.CODE === "INFO-200") return []; throw new Error(j.RESULT.MESSAGE || "NEIS 오류"); }
+  return ((j[ep] || [])[1] || {}).row || [];
+}
+const EP = { "초등학교": "elsTimetable", "중학교": "misTimetable", "고등학교": "hisTimetable" };
+let schoolRes = [];
+const cleanDish = s => s.replace(/<br\s*\/?>/g, " · ").replace(/\s*\([\d.]+\)/g, "").replace(/\s*[\d.]+(?=\s|$)/g, "");
+function isHoliday(date) {
+  return (S.neis.sched[date] || []).some(e => e.t === "휴업일" || /공휴일|재량휴업/.test(e.n) || (/방학/.test(e.n) && !/방학식|개학/.test(e.n)));
+}
+function schoolBlock(date) {
+  if (!isSchool()) return null;
+  const dow = new Date(date + "T00:00:00").getDay();
+  if (dow === 0 || dow === 6 || isHoliday(date)) return null;
+  const st = toMin(S.settings.schoolStart), tt = S.neis.timetable[date], manual = (S.settings.endDay || {})[dow];
+  if (manual) return { s: st, e: toMin(manual), title: "🏫 학교" };
+  if (tt && tt.length) {
+    const n = Math.max(...tt.map(x => +x.p)), unit = +S.settings.period || 50;
+    return { s: st, e: st + n * unit + (n - 1) * 10 + (n >= 5 ? 50 : 0), title: `🏫 학교 (${n}교시)` };
+  }
+  return { s: st, e: toMin(S.settings.schoolEnd), title: "🏫 학교" };
+}
+
+/* ========== 컨디션 / 강도 (수면 기반 · 스마트폰 사용시간은 통계로만 사용) ========== */
+function condition(date = today()) {
+  const sl = S.sleep[date]; if (!sl) return null;
+  let score = Math.min(100, sl.hours / 8 * 75) + (sl.quality - 3) * 5; const notes = [];
+  if (sl.hours < 6) notes.push("수면이 6시간 미만이에요. 오늘은 무리하지 말고 핵심 위주로!");
+  else if (sl.hours >= 7) notes.push("수면이 충분해요. 집중력이 좋은 날이에요.");
+  score = Math.max(0, Math.min(100, Math.round(score)));
+  const level = score >= 75 ? { k: "high", name: "높음", mult: 1.2, block: 50 } : score >= 50 ? { k: "mid", name: "보통", mult: 1, block: 40 } : { k: "low", name: "낮음", mult: .7, block: 25 };
+  return { score, level, notes, sl };
+}
+const defaultLevel = { k: "mid", name: "보통(데이터 없음)", mult: 1, block: 40 };
+
+/* ========== 시험 · 복습(에빙하우스) ========== */
+const INTERVALS = [1, 3, 7, 14, 30];
+const reviewSubj = r => {
+  if (r.matId.startsWith("N:")) { const n = S.notes.find(x => x.id === r.matId.slice(2)); return n && n.sub; }
+  const m = S.materials.find(x => x.id === r.matId); return m && m.sub;
+};
+const upcomingExams = () => S.exams.filter(e => e.date >= today()).sort((a, b) => a.date.localeCompare(b.date));
+const examSubs = e => e.subs || (e.sub ? [subName(e.sub)] : []);
+const examFor = sub => upcomingExams().find(e => !examSubs(e).length || examSubs(e).includes(subName(sub)));
+const cutoffOf = e => addDays(e.date, -7);
+
+// 시험 1주 전까지 모든 복습이 끝나도록 압축하고, 하루 4개를 넘지 않게 분산
+function planReviews(silent) {
+  const t = today(), cap = 4, groups = {}; let moved = 0;
+  const open = S.reviews.filter(r => !r.done);
+  open.forEach(r => { r.lim = null; const e = examFor(reviewSubj(r)); if (e) r.lim = cutoffOf(e) < t ? t : cutoffOf(e); });
+  open.filter(r => r.lim && r.due > r.lim).forEach(r => (groups[r.matId + "|" + r.lim] = groups[r.matId + "|" + r.lim] || []).push(r));
+  Object.values(groups).forEach(g => {
+    g.sort((a, b) => a.n - b.n);
+    const lim = g[0].lim, prev = open.filter(r => r.matId === g[0].matId && !g.includes(r) && r.due <= lim).map(r => r.due);
+    const start = [t, ...prev].sort().pop(), span = Math.max(0, diffDays(start, lim));
+    g.forEach((r, i) => { r.due = addDays(start, Math.round(span * (i + 1) / g.length)); moved++; });
+  });
+  const load = {};
+  open.sort((a, b) => a.due.localeCompare(b.due) || a.n - b.n).forEach(r => {
+    let d = r.due < t ? t : r.due; const first = d; let guard = 0;
+    if (r.due < t) moved++;
+    const ok = x => !isOff(x) && (load[x] || 0) < cap;
+    while (!ok(d) && (!r.lim || d < r.lim) && guard++ < 400) d = addDays(d, 1);
+    if (!ok(d)) { d = first; while (!ok(d) && d > t) d = addDays(d, -1); if (!ok(d)) d = first; }
+    if (d !== r.due && r.due >= t) moved++;
+    load[d] = (load[d] || 0) + 1; r.due = d;
+  });
+  open.forEach(r => delete r.lim);
+  if (moved) { save(); if (!silent) toast(`복습 일정 ${moved}건을 자동 재조정했어요.`); }
+}
+function scheduleReviews(matId, title, base = today()) {
+  INTERVALS.forEach((d, i) => S.reviews.push({ id: uid(), matId, title, due: addDays(base, d), n: i + 1, done: false }));
+  planReviews(true);
+}
+
+/* ========== 스케줄러 ========== */
+function workbookQuota(w, lvl) {
+  const left = Math.max(0, w.total - w.done); if (!left || isOff(today())) return 0;
+  let days = 0; for (let d = today(); d <= w.due; d = addDays(d, 1)) if (!isOff(d)) days++;
+  days = Math.max(1, days);
+  return Math.min(left, Math.max(1, Math.ceil(left / days * lvl.mult)));
+}
+function buildSchedule(date = today()) {
+  const c = condition(date), lvl0 = c ? c.level : defaultLevel;
+  const lvl = isSchool() ? lvl0 : { ...lvl0, block: lvl0.block + 10 };
+  const wake = toMin(isSchool() ? S.settings.wakeS : S.settings.wakeV); let sleepM = toMin(isSchool() ? S.settings.sleepS : S.settings.sleepV);
+  if (sleepM <= wake) sleepM += 1440;
+  const winS = wake + 30, winE = sleepM - 60;
+  const busy = S.events.filter(e => e.date === date).map(e => ({ s: toMin(e.start), e: toMin(e.end), title: e.title, evId: e.id })).filter(b => b.e > b.s);
+  const sb = schoolBlock(date); if (sb) busy.push({ ...sb, school: true });
+  busy.sort((a, b) => a.s - b.s);
+  const tasks = [], off = isOff(date);
+  if (!off) {
+  S.reviews.filter(r => !r.done && r.due <= date).forEach(r => tasks.push({ kind: "review", key: "r:" + r.id, id: r.id, title: `🔁 복습 ${r.n}회차: ${r.title}`, dur: 15 }));
+  const en = S.english[date]; if (!en || !en.done) tasks.push({ kind: "english", key: "e", title: "🌐 오늘의 영어 독해", dur: 15 });
+  S.workbook.forEach(w => { const q = workbookQuota(w, lvl); if (q && !(S.wbDone[date] || {})[w.id]) tasks.push({ kind: "wb", key: "w:" + w.id, id: w.id, title: `📘 ${w.title} ${q}${w.unit}`, dur: Math.max(10, q * w.per) }); });
+  }
+  if (date === today()) { // 이행률 계산용: 오늘 계획된 항목 기록
+    const p = (S.plan[date] = S.plan[date] || {}); let add = 0;
+    tasks.forEach(t => { if (!(t.key in p)) { p[t.key] = t.title; add++; } }); if (add) save();
+  }
+  const free = []; let cur = winS;
+  busy.forEach(b => { if (b.s > cur) free.push([cur, Math.min(b.s, winE)]); cur = Math.max(cur, b.e); });
+  if (cur < winE) free.push([cur, winE]);
+  const out = busy.map(b => ({ s: b.s, e: b.e, title: b.title, kind: "busy", evId: b.evId, school: b.school }));
+  const queue = tasks.map(t => ({ ...t, left: t.dur }));
+  free.forEach(([fs, fe]) => {
+    let p = fs;
+    while (queue.length && fe - p >= 10) {
+      const t = queue[0], chunk = Math.min(t.left, lvl.block, fe - p);
+      out.push({ s: p, e: p + chunk, title: t.title + (t.left > chunk ? " (이어서)" : ""), kind: t.kind, id: t.id });
+      p += chunk; t.left -= chunk;
+      if (t.left <= 0) queue.shift();
+      if (queue.length && fe - p > 10) { out.push({ s: p, e: p + 10, title: "☕ 휴식", kind: "brk" }); p += 10; }
+    }
+  });
+  out.sort((a, b) => a.s - b.s);
+  return { slots: out, overflow: queue, lvl, c };
+}
+
+/* ========== 이행률 / 통계 계산 ========== */
+function planDone(date, key) {
+  if (key === "e") return !!(S.english[date] && S.english[date].done);
+  if (key.startsWith("w:")) return !!(S.wbDone[date] || {})[key.slice(2)];
+  const r = S.reviews.find(x => x.id === key.slice(2)); return !!(r && r.done && r.doneOn === date);
+}
+function dayStats(date) {
+  const p = S.plan[date] || {}, keys = Object.keys(p), done = keys.filter(k => planDone(date, k)).length;
+  return { date, planned: keys.length, done, rate: keys.length ? Math.round(done / keys.length * 100) : null,
+    min: S.studyLog.filter(l => l.date === date).reduce((a, l) => a + (l.min || 0), 0), items: keys.map(k => ({ t: p[k], ok: planDone(date, k) })) };
+}
+const topicOf = n => (n.ai && n.ai.topic) || n.topic || "미분류";
+const subName = id => (S.subjects.find(s => s.id === id) || {}).name || "기타";
+function weakness() {
+  const g = {};
+  S.notes.forEach(n => { const k = subName(n.sub) + " · " + topicOf(n); (g[k] = g[k] || { k, c: 0, types: {} }).c++; if (n.ai && n.ai.errorType) g[k].types[n.ai.errorType] = 1; });
+  return Object.values(g).sort((a, b) => b.c - a.c).map(x => ({ ...x, share: Math.round(x.c / S.notes.length * 100) }));
+}
+function sleepLink() {
+  const grp = { low: { t: 0, ok: 0, notes: 0, days: 0 }, hi: { t: 0, ok: 0, notes: 0, days: 0 } };
+  Object.keys(S.sleep).forEach(d => {
+    const g = S.sleep[d].hours <= 6 ? grp.low : grp.hi; g.days++;
+    S.quizLog.filter(q => q.date === d).forEach(q => { g.t += q.total; g.ok += q.ok; });
+    g.notes += S.notes.filter(n => n.date === d).length;
+  });
+  const out = [];
+  if (grp.low.t && grp.hi.t) {
+    const a = Math.round((1 - grp.low.ok / grp.low.t) * 100), b = Math.round((1 - grp.hi.ok / grp.hi.t) * 100);
+    out.push(`수면 6시간 이하인 날 퀴즈 오답률 ${a}% vs 7시간 이상인 날 ${b}%${a > b ? " → 잠이 부족하면 오답이 늘어요." : "."}`);
+  }
+  if (grp.low.days && grp.hi.days) {
+    const a = r1(grp.low.notes / grp.low.days), b = r1(grp.hi.notes / grp.hi.days);
+    out.push(`하루 평균 오답노트: 수면 부족한 날 ${a}개 / 충분한 날 ${b}개`);
+  }
+  return out;
+}
+function reportLines(days) {
+  const st = days.map(dayStats), L = [], rates = st.filter(x => x.rate != null).map(x => x.rate);
+  if (rates.length) {
+    const a = Math.round(avg(rates)), best = st.filter(x => x.rate != null).sort((x, y) => y.rate - x.rate)[0];
+    L.push(`계획 대비 이행률은 평균 ${a}%예요${a >= 80 ? " — 아주 잘하고 있어요!" : a >= 50 ? " — 조금만 더 힘내요." : " — 계획 분량을 줄이는 것도 방법이에요."} (가장 좋은 날: ${best.date.slice(5)} ${best.rate}%)`);
+  } else L.push("아직 이행률 데이터가 없어요. 오늘 계획을 하나씩 완료해 보세요.");
+  const tot = st.reduce((a, x) => a + x.min, 0); L.push(`총 공부 시간 ${Math.floor(tot / 60)}시간 ${tot % 60}분 (하루 평균 ${Math.round(tot / days.length)}분).`);
+  const us = days.map(d => (S.usage[d] || {}).minutes).filter(x => x != null);
+  if (us.length) L.push(`스마트폰 하루 평균 ${Math.round(avg(us))}분 사용 (통계 참고용).`);
+  const sl = days.map(d => (S.sleep[d] || {}).hours).filter(x => x != null);
+  if (sl.length) L.push(`평균 수면 ${r1(avg(sl))}시간.`);
+  L.push(...sleepLink());
+  const w = weakness(); if (w.length) L.push(`가장 취약한 부분: ${w[0].k} (오답 ${w[0].c}건, 오답 비중 ${w[0].share}%).`);
+  return L;
+}
+function bars(items, o = {}) {
+  const W = 320, H = 110, n = items.length, bw = W / n, mx = o.max || Math.max(1, ...items.map(i => i.v || 0));
+  return `<svg viewBox="0 0 ${W} ${H + 18}" style="width:100%"><line x1="0" y1="${H}" x2="${W}" y2="${H}" stroke="#999"/>` + items.map((it, i) => {
+    const h = it.v == null ? 0 : Math.round(it.v / mx * H), cx = i * bw + bw / 2;
+    return `<rect x="${i * bw + bw * .15}" y="${H - h}" width="${bw * .7}" height="${h}" fill="${it.hi ? "#fff" : "#666"}"/>`
+      + (n <= 8 || i % Math.ceil(n / 8) === 0 ? `<text x="${cx}" y="${H + 12}" font-size="9" text-anchor="middle">${it.l}</text>` : "")
+      + (it.v != null && n <= 8 ? `<text x="${cx}" y="${H - h - 2}" font-size="9" text-anchor="middle">${it.v}</text>` : "");
+  }).join("") + `</svg>`;
+}
+
+/* ========== 화면 ========== */
+let tab = "today", calSel = today(), calMonth = today().slice(0, 7), addMode = null, rng = "week", schoolPick = null;
+const TABS = [["today", "🏠", "오늘"], ["stats", "📊", "통계"], ["focus", "🎯", "집중"], ["review", "🗓️", "캘린더"], ["body", "🛌", "컨디션"], ["study", "📚", "학습"], ["notes", "📝", "오답"], ["english", "🌐", "영어"]];
+const views = {}, after = {}, acts = {};
+function render() {
+  $("#nav").innerHTML = TABS.map(([k, i, n]) => `<button class="${tab === k ? "on" : ""}" data-act="tab" data-t="${k}"><b>${i}</b>${n}</button>`).join("");
+  $("#modeBtn").textContent = isSchool() ? "🏫 학기중" : "🌴 방학";
+  $("#main").innerHTML = (views[tab] || views.today)(); after[tab] && after[tab]();
+}
+acts.tab = d => { tab = d.t; render(); window.scrollTo(0, 0); };
+acts.mode = () => { S.settings.mode = isSchool() ? "vacation" : "school"; save(); toast(isSchool() ? "학기중 모드: 학교 시간을 빼고 계획해요." : "방학 모드: 하루 전체를 공부에 써요."); render(); };
+
+/* ----- 오늘 ----- */
+views.today = () => {
+  const sch = buildSchedule(), c = sch.c, t = today(), tt = S.neis.timetable[t], meal = S.neis.meals[t];
+  const ex = upcomingExams()[0];
+  const dueN = S.reviews.filter(r => !r.done && r.due <= t).length;
+  return `
+  <div class="mode"><b>${isSchool() ? "🏫 학기중 모드" : "🌴 방학 모드"}</b> · 기상 ${isSchool() ? S.settings.wakeS : S.settings.wakeV} · 취침 ${isSchool() ? S.settings.sleepS : S.settings.sleepV}
+    ${ex ? `<br>📌 ${esc(ex.title)} D-${diffDays(t, ex.date)} · 복습 마감 ${cutoffOf(ex)}${cutoffOf(ex) <= t ? " (지금은 시험 직전 주 — 복습 마무리 & 오답 점검!)" : ""}` : ""}</div>
+  <div class="card"><h2>${t} 오늘의 컨디션</h2>
+    ${c ? `<span class="score">${c.score}</span> <span class="pill dark">공부 강도 ${sch.lvl.name}</span>
+      <div class="muted">집중 블록 ${sch.lvl.block}분 · 분량 ×${sch.lvl.mult}</div>${c.notes.map(n => `<div class="muted">• ${esc(n)}</div>`).join("")}`
+    : `<div class="muted">수면 데이터가 없어 보통 강도로 계획했어요. <a href="#" data-act="tab" data-t="body">컨디션 탭</a>에서 입력해 보세요.</div>`}
+  </div>
+  <div class="card"><h2>⏰ 오늘 시간표</h2>
+    ${isOff(today()) ? `<div class="mode">🛌 오늘은 휴무일이에요. 공부 계획 없이 푹 쉬세요!</div>` : ""}
+    ${sch.slots.length ? sch.slots.map(s => `<div class="slot ${s.kind}"><div class="t">${fmt(s.s)}–${fmt(s.e)}</div><div class="n">${esc(s.title)}</div>
+      ${s.kind === "review" ? `<button class="btn sm sec" data-act="doneReview" data-id="${s.id}">완료</button>` : ""}
+      ${s.kind === "wb" ? `<button class="btn sm sec" data-act="doneWb" data-id="${s.id}">완료</button>` : ""}
+      ${s.kind === "english" ? `<button class="btn sm sec" data-act="tab" data-t="english">열기</button>` : ""}
+      ${s.evId ? `<button class="btn sm bad" data-act="delEvent" data-id="${s.evId}">×</button>` : ""}</div>`).join("") : `<div class="muted">${isOff(today()) ? "🛌 오늘은 휴무일이에요. 푹 쉬세요!" : "오늘 할 일이 없어요. 학습 탭에서 자료를 추가해 보세요."}</div>`}
+    ${sch.overflow.length ? `<div class="muted" style="margin-top:8px">⚠ 시간이 부족해 내일로 이월: ${sch.overflow.map(o => esc(o.title)).join(", ")}</div>` : ""}
+    ${S.memos.filter(m => m.date === today()).map(m => `<div class="muted">✎ ${esc(m.text)}</div>`).join("")}
+    ${dueN ? `<div class="muted">오늘 복습 대기 ${dueN}개</div>` : ""}
+  </div>
+  ${subjectDonut()}
+  ${isSchool() && (tt || meal) ? `<div class="card"><h2>🏫 학교 정보 <span class="muted">${esc(S.school ? S.school.name : "")}</span></h2>
+    ${tt ? `<h3>오늘 시간표</h3><div>${tt.map(x => `${x.p}. ${esc(x.c)}`).join(" · ")}</div>` : ""}
+    ${meal ? `<h3>오늘 급식</h3>${meal.map(m => `<div><b>${esc(m.m)}</b> ${esc(m.n)}</div>`).join("")}` : ""}</div>` : ""}
+  <div class="card"><h2>➕ 일정 추가</h2>
+    <div class="row"><div><label>제목</label><input id="evT"></div><div><label>날짜</label><input id="evD" type="date" value="${t}"></div></div>
+    <div class="row"><div><label>시작</label><input id="evS" type="time" value="16:00"></div><div><label>끝</label><input id="evE" type="time" value="18:00"></div><button class="btn" data-act="addEvent">추가</button></div>
+      </div>
+      ${todayAnalysis()}`;
+    };
+    const DONUT = ["#ffffff", "#cfcfcf", "#a6a6a6", "#858585", "#666666", "#4d4d4d", "#383838", "#262626"];
+function subjectMinutes(date) {
+  const m = {};
+  S.studyLog.filter(l => l.date === date).forEach(l => {
+    let k = l.subj;
+    if (!k && l.matId) { const n = l.matId.startsWith("N:") ? S.notes.find(x => x.id === l.matId.slice(2)) : S.materials.find(x => x.id === l.matId); k = n && subName(n.sub); }
+    k = k || "기타"; m[k] = (m[k] || 0) + (l.min || 0);
+  });
+  return Object.entries(m).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+}
+function subjectDonut() {
+  const data = subjectMinutes(today()), tot = data.reduce((a, [, v]) => a + v, 0), R = 54, C = 2 * Math.PI * R;
+  if (!tot) return `<div class="card"><h2>🍩 오늘 과목별 공부 시간</h2><div class="muted">아직 기록이 없어요. 복습·교재·영어·집중 타이머를 완료하면 과목별로 쌓여요.</div></div>`;
+  let off = 0;
+  const arcs = data.map(([k, v], i) => { const len = v / tot * C, s = `<circle r="${R}" cx="70" cy="70" fill="none" stroke="${DONUT[i % DONUT.length]}" stroke-width="22" stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-off}" transform="rotate(-90 70 70)"/>`; off += len; return s; }).join("");
+  return `<div class="card"><h2>🍩 오늘 과목별 공부 시간</h2><div class="row" style="align-items:center">
+    <svg viewBox="0 0 140 140" style="max-width:170px;flex:0 0 170px"><circle r="${R}" cx="70" cy="70" fill="none" stroke="#222" stroke-width="22"/>${arcs}
+      <text x="70" y="66" text-anchor="middle" font-size="12" style="fill:#aaa">총</text><text x="70" y="84" text-anchor="middle" font-size="16" font-weight="700" style="fill:#fff">${Math.floor(tot / 60)}h ${tot % 60}m</text></svg>
+    <div style="flex:1;min-width:150px">${data.map(([k, v], i) => `<div class="slot"><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${DONUT[i % DONUT.length]};border:1px solid #777"></span><div class="n">${esc(k)}</div><div class="muted">${v}분 · ${Math.round(v / tot * 100)}%</div></div>`).join("")}</div></div></div>`;
+}
+const todayAnalysis = () => {
+      const t = today(), s = dayStats(t);
+      return `<div class="card"><h2>🧠 오늘 분석</h2>
+        <div class="grid3"><div><div class="big">${s.rate != null ? s.rate + "%" : "-"}</div><div class="muted">이행률</div></div>
+        <div><div class="big">${Math.floor(s.min / 60)}h ${s.min % 60}m</div><div class="muted">공부 시간</div></div>
+        <div><div class="big">${s.done}/${s.planned}</div><div class="muted">완료/계획</div></div></div>
+        <div class="bar" style="margin:8px 0"><i style="width:${s.rate || 0}%"></i></div>
+        ${s.items.map(i => `<div class="slot"><div class="n">${i.ok ? "✅" : "⬜"} ${esc(i.t)}</div></div>`).join("")}
+        ${reportLines([t]).map(l => `<div style="margin:4px 0">• ${esc(l)}</div>`).join("")}</div>`;
+    };
+const wbCard = () => {
+  const t = today(), lvl = buildSchedule().lvl;
+  return `<div class="card"><h2>📘 교재</h2>
+    ${S.workbook.map(w => `<div class="slot"><div class="n"><b>${esc(w.title)}</b> <span class="muted">${w.done}/${w.total}${esc(w.unit)} · ${w.due}까지(${Math.max(0, diffDays(t, w.due) + 1)}일 남음) · 오늘 ${workbookQuota(w, lvl)}${esc(w.unit)}</span><div class="bar"><i style="width:${w.done / w.total * 100}%"></i></div></div><button class="btn sm bad" data-act="delWb" data-id="${w.id}">삭제</button></div>`).join("") || `<div class="muted">등록된 교재가 없어요.</div>`}
+    <div class="row"><div><label>과목</label><select id="wbS">${subOptions()}</select></div><div><label>교재 이름</label><input id="wbT"></div><div><label>전체 분량</label><input id="wbN" type="number" value="200"></div><div><label>단위</label><input id="wbU" value="쪽"></div><div><label>며칠 안에 끝낼까요?</label><input id="wbD" type="number" min="1" value="30"></div><button class="btn" data-act="addWb">추가</button></div>
+  </div>`;
+};
+acts.addEvent = () => {
+  const e = { id: uid(), title: val("evT") || "일정", date: val("evD") || today(), start: val("evS"), end: val("evE") };
+  if (toMin(e.end) <= toMin(e.start)) return toast("끝나는 시간이 시작보다 늦어야 해요.");
+  S.events.push(e); save(); render();
+};
+acts.delEvent = d => { S.events = S.events.filter(e => e.id !== d.id); save(); render(); };
+acts.addWb = () => {
+  const total = +val("wbN"), days = Math.max(1, +val("wbD") || 1); if (!val("wbT") || total <= 0) return toast("이름과 분량을 입력해 주세요.");
+  S.workbook.push({ id: uid(), sub: val("wbS"), title: val("wbT"), total, done: 0, unit: val("wbU") || "쪽", per: 3, due: addDays(today(), days - 1) }); save(); render();
+};
+acts.delWb = d => { S.workbook = S.workbook.filter(w => w.id !== d.id); save(); render(); };
+acts.doneWb = d => {
+  const w = S.workbook.find(x => x.id === d.id), q = workbookQuota(w, buildSchedule().lvl);
+  w.done = Math.min(w.total, w.done + q); (S.wbDone[today()] = S.wbDone[today()] || {})[w.id] = true;
+  S.studyLog.push({ date: today(), title: `${w.title} ${q}${w.unit}`, subj: w.sub ? subName(w.sub) : w.title, min: q * w.per }); save(); render();
+};
+acts.doneReview = d => {
+  const r = S.reviews.find(x => x.id === d.id); if (!r) return;
+  r.done = true; r.doneOn = today(); S.studyLog.push({ date: today(), title: `복습: ${r.title}`, matId: r.matId, subj: subName(reviewSubj(r)), min: 15 }); save(); render();
+};
+
+/* ----- 학습 (교과서/프린트) ----- */
+const LIMIT = 24000;
+views.study = () => `
+  ${wbCard()}
+  <div class="card"><h2>📖 과목 · 출판사</h2>
+    ${S.subjects.map(s => `<span class="pill">${esc(s.name)} · ${esc(s.publisher || "출판사 미설정")} <a href="#" data-act="delSub" data-id="${s.id}">✕</a></span> `).join("") || `<div class="muted">과목을 추가하세요.</div>`}
+    <div class="row"><div><label>과목</label><input id="sbN" placeholder="국어"></div><div><label>출판사</label><input id="sbP" placeholder="천재교육"></div><button class="btn" data-act="addSub">추가</button></div></div>
+  <div class="card"><h2>➕ 교과서 PDF / 프린트 사진 업로드</h2>
+    <div class="row"><div><label>과목</label><select id="mSub">${subOptions()}</select></div>
+    <div><label>제목 (단원/프린트명)</label><input id="mT" placeholder="2단원 광합성"></div></div>
+    <label>교과서 PDF</label><input id="mPdf" type="file" accept="application/pdf">
+    <label>프린트/학습지 사진 (촬영 또는 선택)</label><input id="mImg" type="file" accept="image/*" capture="environment">
+    <label>또는 텍스트 붙여넣기</label><textarea id="mTxt"></textarea>
+    <p class="muted">긴 문서는 AI 한도에 맞게 앞부분 ${LIMIT.toLocaleString()}자로 압축해 분석하고, 사진은 긴 변 1280px로 줄여 전송합니다.</p>
+    <button class="btn" data-act="addMat">AI 분석 후 저장</button> <button class="btn sec" data-act="addMatNoAI">AI 없이 저장</button></div>
+  <div>${S.materials.slice().reverse().map(matCard).join("") || `<div class="card muted">저장된 학습 자료가 없어요.</div>`}</div>`;
+const subOptions = () => S.subjects.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join("") || "<option value=''>(과목 없음)</option>";
+function matCard(m) {
+  const a = m.ai;
+  return `<div class="card"><h2>${esc(m.title)} <span class="pill">${esc(subName(m.sub))}</span> <span class="pill">${m.type}</span></h2>
+    <div class="muted">${m.date} · 저장된 글자 ${m.text.length.toLocaleString()}자</div>
+    ${a ? `<h3>요약</h3><div>${esc(a.summary)}</div>
+      <details><summary>심화 개념 (${(a.concepts || []).length})</summary>${(a.concepts || []).map(c => `<p><b>${esc(c.term)}</b> — ${esc(c.explain)}</p>`).join("")}</details>
+      <details><summary>확장 지식 (${(a.extended || []).length})</summary><ul>${(a.extended || []).map(x => `<li>${esc(x)}</li>`).join("")}</ul></details>
+      <details><summary>맞춤 퀴즈 (${(a.quiz || []).length})</summary>${quizHtml(a.quiz || [], "m" + m.id)}</details>`
+      : `<div class="muted">AI 분석 없음 <button class="btn sm sec" data-act="analyze" data-id="${m.id}">지금 분석</button></div>`}
+    <details><summary>원문 텍스트</summary><div class="muted" style="white-space:pre-wrap;max-height:200px;overflow:auto">${esc(m.text.slice(0, 4000))}</div></details>
+    <button class="btn sm bad" data-act="delMat" data-id="${m.id}">삭제</button></div>`;
+}
+acts.addSub = () => { if (!val("sbN")) return; S.subjects.push({ id: uid(), name: val("sbN"), publisher: val("sbP") }); save(); render(); };
+acts.delSub = d => { S.subjects = S.subjects.filter(s => s.id !== d.id); save(); render(); };
+acts.delMat = d => { S.materials = S.materials.filter(m => m.id !== d.id); S.reviews = S.reviews.filter(r => r.matId !== d.id); save(); render(); };
+
+function loadScript(src) { return new Promise((ok, no) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = () => no(new Error("라이브러리 로딩 실패(인터넷 연결 확인)")); document.head.appendChild(s); }); }
+async function pdfText(file) {
+  if (!window.pdfjsLib) {
+    await loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js");
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  }
+  const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+  let out = "";
+  for (let i = 1; i <= pdf.numPages && out.length < 60000; i++) {
+    const tc = await (await pdf.getPage(i)).getTextContent();
+    out += `\n[p.${i}] ` + tc.items.map(x => x.str).join(" ");
+  }
+  return out.trim();
+}
+function imageB64(file, max = 1280, q = .8) {
+  return new Promise((ok, no) => {
+    const img = new Image(), u = URL.createObjectURL(file);
+    img.onload = () => {
+      const k = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement("canvas");
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(u);
+      ok(c.toDataURL("image/jpeg", q).split(",")[1]);
+    };
+    img.onerror = () => no(new Error("이미지를 읽을 수 없어요.")); img.src = u;
+  });
+}
+async function analyze(text, imgB64, subNm, publisher, title) {
+  const prompt = `너는 한국 학생의 학습 도우미다. 아래 ${imgB64 ? "학습지 사진" : "교재 텍스트"}를 분석해 JSON만 출력해라. 과목: ${subNm || "미지정"}, 출판사: ${publisher || "미지정"}, 제목: ${title}.
+형식: {"ocr":"사진이면 인식한 텍스트 전문(아니면 빈 문자열)","summary":"3~5문장 핵심 요약","concepts":[{"term":"용어","explain":"심화 설명"}],"extended":["교과 밖 확장 지식 3~5개"],${QUIZ_SCHEMA}}
+quiz는 4지선다 5문제, answer는 정답 인덱스(0~3). 모든 내용은 한국어로.`;
+  const parts = [{ text: prompt }];
+  if (imgB64) parts.push({ inlineData: { mimeType: "image/jpeg", data: imgB64 } }); else parts.push({ text: text.slice(0, LIMIT) });
+  return gemini(parts);
+}
+const busyUI = on => document.querySelectorAll("#main .btn").forEach(b => b.disabled = on);
+async function saveMaterial(withAI) {
+  const subId = val("mSub"), sub = S.subjects.find(s => s.id === subId), title = val("mT").trim();
+  if (!title) return toast("제목을 입력해 주세요.");
+  const pf = $("#mPdf").files[0], imf = $("#mImg").files[0];
+  if (!pf && !imf && !val("mTxt").trim()) return toast("PDF, 사진, 텍스트 중 하나를 넣어 주세요.");
+  busyUI(true); toast("처리 중… 잠시만요", 60000);
+  try {
+    let text = val("mTxt").trim(), type = "텍스트", img = null;
+    if (pf) { type = "PDF"; text = await pdfText(pf); if (!text) throw new Error("PDF에서 글자를 찾지 못했어요(스캔본이면 사진으로 올려 주세요)."); }
+    if (imf) { type = "사진"; img = await imageB64(imf); }
+    let ai = null;
+    if (withAI) ai = await analyze(text, img, sub && sub.name, sub && sub.publisher, title);
+    if (img && ai && ai.ocr) text = ai.ocr;
+    const m = { id: uid(), sub: subId, title, type, date: today(), text: (text || "(사진 – AI 분석 필요)").slice(0, 60000), ai: ai ? { summary: ai.summary, concepts: ai.concepts, extended: ai.extended, quiz: ai.quiz } : null };
+    S.materials.push(m); scheduleReviews(m.id, title); S.studyLog.push({ date: today(), title: `학습: ${title}`, matId: m.id, subj: subName(subId), min: 30 });
+    if (save()) toast("저장 완료! 복습 일정도 자동 등록했어요."); render();
+  } catch (e) { toast("⚠ " + e.message, 6000); busyUI(false); }
+}
+acts.addMat = () => saveMaterial(true);
+acts.addMatNoAI = () => saveMaterial(false);
+acts.analyze = async d => {
+  const m = S.materials.find(x => x.id === d.id), sub = S.subjects.find(s => s.id === m.sub);
+  toast("분석 중…", 60000);
+  try { const ai = await analyze(m.text, null, sub && sub.name, sub && sub.publisher, m.title); m.ai = { summary: ai.summary, concepts: ai.concepts, extended: ai.extended, quiz: ai.quiz }; save(); toast("완료"); render(); }
+  catch (e) { toast("⚠ " + e.message, 6000); }
+};
+function quizHtml(items, pre) {
+  gradeStore[pre] = items;
+  return items.map((q, i) => `<div class="q" id="${pre}q${i}"><b>${i + 1}. ${esc(q.q)}</b>${(q.choices || []).map((c, j) => `<label><input type="radio" name="${pre}${i}" value="${j}">${esc(c)}</label>`).join("")}<div class="muted" style="display:none" id="${pre}e${i}">정답: ${(+q.answer) + 1}번 — ${esc(q.explain || "")}</div></div>`).join("")
+    + `<button class="btn sm" data-act="grade" data-pre="${pre}">채점</button> <span id="${pre}res"></span>`;
+}
+const gradeStore = {};
+acts.grade = d => {
+  const items = gradeStore[d.pre] || []; let ok = 0;
+  items.forEach((q, i) => {
+    const sel = document.querySelector(`input[name="${d.pre}${i}"]:checked`), right = sel && +sel.value === +q.answer;
+    if (right) ok++; $(`#${d.pre}q${i}`).className = "q " + (right ? "right" : "wrong"); $(`#${d.pre}e${i}`).style.display = "block";
+  });
+  $(`#${d.pre}res`).textContent = `${ok} / ${items.length} 정답`;
+  const key = d.pre + "|" + today(); S.quizLog = S.quizLog.filter(q => q.key !== key); S.quizLog.push({ key, date: today(), total: items.length, ok }); save();
+};
+
+/* ----- 오답노트 ----- */
+views.notes = () => {
+  const w = weakness(), ai = S.ai.weak;
+  return `<div class="card"><h2>📸 오답노트 만들기</h2>
+    <div class="row"><div><label>과목</label><select id="nSub">${subOptions()}</select></div><div><label>단원/유형 (선택, AI가 자동 인식)</label><input id="nTop"></div></div>
+    <label>문제 사진 (촬영 또는 선택)</label><input id="nImg" type="file" accept="image/*" capture="environment">
+    <label>메모 (내가 쓴 답, 틀린 이유 등)</label><textarea id="nMemo"></textarea>
+    <button class="btn" data-act="addNote">AI로 오답노트 저장</button> <button class="btn sec" data-act="addNoteNoAI">AI 없이 저장</button></div>
+  <div class="card"><h2>🔍 취약점 분석</h2>
+    ${w.length ? w.slice(0, 8).map(x => `<div style="margin:8px 0"><b>${esc(x.k)}</b> <span class="muted">오답 ${x.c}건 · 비중 ${x.share}%</span><div class="bar"><i style="width:${x.share}%"></i></div></div>`).join("") : `<div class="muted">오답이 쌓이면 취약한 단원·유형을 보여 드려요.</div>`}
+    ${S.notes.length ? `<button class="btn sm" data-act="weakAI">AI 취약점 진단</button>` : ""}
+    ${ai ? `<h3>AI 진단 (${ai.date})</h3><div style="white-space:pre-wrap">${esc(ai.text)}</div>` : ""}
+    <p class="muted">취약 개념은 복습 퀴즈에 자동 반영되고, 오답마다 에빙하우스 복습이 캘린더에 등록돼요.</p></div>
+  ${S.notes.slice().reverse().map(n => `<div class="card"><h2>${esc(topicOf(n))} <span class="pill">${esc(subName(n.sub))}</span> ${n.ai && n.ai.errorType ? `<span class="pill dark">${esc(n.ai.errorType)}</span>` : ""}</h2>
+    <div class="muted">${n.date}</div>${n.thumb ? `<img class="thumb" src="data:image/jpeg;base64,${n.thumb}">` : ""}
+    ${n.text ? `<div style="white-space:pre-wrap">${esc(n.text)}</div>` : ""}
+    ${n.ai ? `<details><summary>핵심 개념 · 풀이</summary><p><b>개념</b> ${esc(n.ai.concept)}</p><p><b>풀이</b> ${esc(n.ai.solution)}</p></details>
+      ${(n.ai.quiz || []).length ? `<details><summary>유사 문제</summary>${quizHtml(n.ai.quiz, "n" + n.id)}</details>` : ""}` : ""}
+    <button class="btn sm bad" data-act="delNote" data-id="${n.id}">삭제</button></div>`).join("") || `<div class="card muted">저장된 오답노트가 없어요.</div>`}`;
+};
+async function saveNote(withAI) {
+  const imf = $("#nImg").files[0], memo = val("nMemo").trim();
+  if (!imf && !memo) return toast("사진이나 메모를 입력해 주세요.");
+  busyUI(true); toast("오답노트 만드는 중…", 60000);
+  try {
+    const sub = S.subjects.find(s => s.id === val("nSub")); let img = null, thumb = null, ai = null;
+    if (imf) { img = await imageB64(imf); thumb = await imageB64(imf, 360, .5); }
+    if (withAI) {
+      const prompt = `너는 학생의 오답노트 도우미다. ${img ? "사진 속" : "아래 메모의"} 문제를 분석해 JSON만 출력해라. 과목: ${sub ? sub.name : "미지정"}. 학생 메모: ${memo || "없음"}
+형식: {"question":"문제 전문","topic":"단원/개념(15자 이내)","concept":"관련 핵심 개념 설명","errorType":"개념 부족|계산 실수|문제 이해 부족|응용 부족|기타 중 하나","solution":"정답과 풀이",${QUIZ_SCHEMA}}
+quiz는 같은 개념의 유사 4지선다 1문제. 모두 한국어.`;
+      const parts = [{ text: prompt }]; if (img) parts.push({ inlineData: { mimeType: "image/jpeg", data: img } });
+      ai = await gemini(parts);
+    }
+    const n = { id: uid(), sub: val("nSub"), date: today(), topic: val("nTop").trim(), text: (ai && ai.question) || memo, memo, thumb, ai };
+    S.notes.push(n); scheduleReviews("N:" + n.id, "오답: " + topicOf(n)); S.studyLog.push({ date: today(), title: "오답노트: " + topicOf(n), matId: "N:" + n.id, subj: subName(n.sub), min: 5 });
+    if (save()) toast("오답노트 저장! 복습 일정이 등록됐어요."); render();
+  } catch (e) { toast("⚠ " + e.message, 6000); busyUI(false); }
+}
+acts.addNote = () => saveNote(true);
+acts.addNoteNoAI = () => saveNote(false);
+acts.delNote = d => { S.notes = S.notes.filter(n => n.id !== d.id); S.reviews = S.reviews.filter(r => r.matId !== "N:" + d.id); save(); render(); };
+acts.weakAI = async () => {
+  toast("AI 진단 중…", 60000);
+  try {
+    const sum = weakness().slice(0, 10).map(x => `${x.k}: ${x.c}건 ${Object.keys(x.types).join("/")}`).join("\n");
+    const text = await gemini([{ text: `다음은 학생 오답노트 집계다. 취약한 유형·개념을 진단하고 학습 조언을 한국어로 6줄 이내로 써라.\n${sum}\n${sleepLink().join("\n")}` }], false);
+    S.ai.weak = { date: today(), text }; save(); toast("완료"); render();
+  } catch (e) { toast("⚠ " + e.message, 6000); }
+};
+
+/* ----- 영어 ----- */
+const SAMPLES = [
+  { title: "Sleep and Learning (sample)", text: "Scientists say that sleep is very important for learning. When we sleep, our brains organize the information we studied during the day. Students who sleep eight hours remember more words and facts than students who stay up late. Experts suggest that teenagers should go to bed at the same time every night and avoid phones before sleeping." },
+  { title: "The Future of Electric Buses (sample)", text: "Many cities around the world are replacing old diesel buses with electric ones. Electric buses are quieter and produce no exhaust, so the air becomes cleaner. Although they cost more to buy, they are cheaper to run. Some cities hope to have only electric buses within ten years." },
+  { title: "Reading Habits of Teenagers (sample)", text: "A new survey shows that teenagers read fewer books than they did twenty years ago, but they read more short texts on screens. Teachers say that reading a little every day is better than reading a lot once a week. Even fifteen minutes a day can improve vocabulary and concentration." }
+];
+views.english = () => {
+  const e = S.english[today()];
+  return `<div class="card"><h2>🌐 매일 영어 독해 <span class="muted">Breaking News English</span></h2>
+    <button class="btn" data-act="loadBne">오늘 지문 불러오기</button> <button class="btn sec" data-act="sample">내장 샘플</button>
+    <p class="muted">공식 사이트의 공개 페이지를 개인 학습 용도로만 읽어옵니다. 실패하면 아래에 직접 붙여넣거나 샘플을 쓰세요.</p></div>
+    ${e ? `<div class="card"><h2>${esc(e.title)}</h2><div class="muted">출처: ${esc(e.src)}</div><div class="en">${esc(e.text)}</div>
+      <p><button class="btn sm" data-act="engDone">${e.done ? "✅ 읽기 완료" : "읽기 완료 체크"}</button> <button class="btn sm sec" data-act="engAI">${e.ai ? "지문 다시 분석" : "지문 분석하기"}</button></p>
+      ${e.ai ? engAnalysis(e.ai) : ""}</div>`
+    : `<div class="card muted">아직 오늘의 지문이 없어요.</div>`}
+    <div class="card"><h2>✍ 직접 붙여넣기</h2><input id="enT" placeholder="제목"><textarea id="enX" placeholder="영어 지문"></textarea><button class="btn" data-act="enPaste">저장</button></div>`;
+};
+acts.loadBne = async () => {
+  toast("Breaking News English에서 불러오는 중…", 60000);
+  try {
+    const base = "https://breakingnewsenglish.com/", home = await fetchProxy(base);
+    const m = home.match(/href="(\d{4}\/\d{6}-[^"]+?\.html)"/);
+    if (!m) throw new Error("최신 지문 링크를 찾지 못했어요.");
+    const url = base + m[1], doc = new DOMParser().parseFromString(await fetchProxy(url), "text/html");
+    doc.querySelectorAll("script,style,nav,header,footer").forEach(n => n.remove());
+    const title = (doc.querySelector("h1,title") || {}).textContent || "Breaking News English";
+    const paras = [...doc.querySelectorAll("p")].map(p => p.textContent.replace(/\s+/g, " ").trim()).filter(t => t.length > 60).slice(0, 8);
+    if (!paras.length) throw new Error("지문 본문을 해석하지 못했어요.");
+    S.english[today()] = { title: title.trim(), text: paras.join("\n\n"), src: url }; save(); toast("불러오기 성공!"); render();
+  } catch (e) { toast("⚠ " + e.message + " 샘플을 대신 표시합니다.", 6000); acts.sample(); }
+};
+acts.sample = () => { const s = SAMPLES[new Date().getDate() % SAMPLES.length]; S.english[today()] = { ...s, src: "내장 샘플" }; save(); render(); };
+acts.enPaste = () => { if (!val("enX").trim()) return; S.english[today()] = { title: val("enT") || "직접 입력 지문", text: val("enX").trim(), src: "직접 입력" }; save(); render(); };
+acts.engDone = () => { const e = S.english[today()]; if (e.done) return; e.done = true; S.studyLog.push({ date: today(), title: `영어: ${e.title}`, subj: "영어", min: 15 }); save(); render(); };
+const engAnalysis = a => `
+  ${a.topic ? `<h3>주제</h3><div>${esc(a.topic)}</div>` : ""}
+  ${a.summary ? `<h3>요약</h3><div>${esc(a.summary)}</div>` : ""}
+  ${(a.sentences || []).length ? `<details open><summary>문장별 해석 · 문법 (${a.sentences.length})</summary>${a.sentences.map(s => `<div class="q"><div><b>${esc(s.en)}</b></div><div>${esc(s.ko)}</div>${s.grammar ? `<div class="muted">💡 ${esc(s.grammar)}</div>` : ""}</div>`).join("")}</details>` : ""}
+  ${(a.vocab || []).length ? `<details open><summary>핵심 어휘 (${a.vocab.length})</summary>${a.vocab.map(v => `<div class="q"><b>${esc(v.word)}</b> ${v.pos ? `<span class="pill">${esc(v.pos)}</span>` : ""} — ${esc(v.meaning)}
+    ${v.example ? `<div class="muted">예) ${esc(v.example)}${v.exampleKo ? " — " + esc(v.exampleKo) : ""}</div>` : ""}
+    ${(v.synonyms || []).length ? `<div class="muted">유의어: ${v.synonyms.map(esc).join(", ")}</div>` : ""}${(v.antonyms || []).length ? `<div class="muted">반의어: ${v.antonyms.map(esc).join(", ")}</div>` : ""}
+    ${(v.related || []).length ? `<div class="muted">관련·파생: ${v.related.map(esc).join(", ")}</div>` : ""}</div>`).join("")}</details>` : ""}
+  ${(a.phrases || []).length ? `<details><summary>유용한 표현·숙어 (${a.phrases.length})</summary>${a.phrases.map(p => `<div class="q"><b>${esc(p.phrase)}</b> — ${esc(p.meaning)}</div>`).join("")}</details>` : ""}
+  ${(a.quiz || []).length ? `<h3>이해 확인 퀴즈</h3>${quizHtml(a.quiz, "en")}` : ""}`;
+function localEngAnalysis(text) {
+  const sents = text.replace(/\s+/g, " ").split(/(?<=[.!?])\s+/).filter(Boolean), stop = new Set("that with this have from they were been their which would there about when what your will more than them these some other into only could also".split(" "));
+  const freq = {}; (text.toLowerCase().match(/[a-z]{6,}/g) || []).forEach(w => { if (!stop.has(w)) freq[w] = (freq[w] || 0) + 1; });
+  const words = Object.keys(freq).sort((a, b) => b.length - a.length || freq[b] - freq[a]).slice(0, 8);
+  return { topic: `문장 ${sents.length}개 · 약 ${text.split(/\s+/).length}단어 · 읽기 ${Math.max(1, Math.round(text.split(/\s+/).length / 120))}분 (API 키를 넣으면 해석·어휘 풀이가 더 자세해져요)`,
+    sentences: sents.map(s => ({ en: s, ko: "(AI 분석 시 번역)" })).slice(0, 0), vocab: words.map(w => ({ word: w, meaning: "뜻은 AI 분석에서 제공돼요" })), quiz: [] };
+}
+acts.engAI = async () => {
+  const e = S.english[today()]; toast("지문 분석 중…", 60000);
+  try {
+    e.ai = await gemini([{ text: `너는 한국 중고등학생을 위한 영어 선생님이다. 다음 영어 지문을 분석해 JSON만 출력해라. 설명은 한국어로.
+형식: {"topic":"주제 한 줄","summary":"3문장 이내 요약","sentences":[{"en":"원문 문장","ko":"자연스러운 해석","grammar":"핵심 문법/구문 포인트(없으면 빈 문자열)"}],
+"vocab":[{"word":"단어","pos":"품사","meaning":"뜻","example":"예문(영어)","exampleKo":"예문 해석","synonyms":["유의어"],"antonyms":["반의어"],"related":["파생어/관련어"]}],
+"phrases":[{"phrase":"숙어/연어","meaning":"뜻"}],${QUIZ_SCHEMA}}
+조건: 모든 문장을 sentences에 순서대로 넣고, vocab은 8~10개, phrases는 2~4개, quiz는 4지선다 3문제(내용 이해 + 어휘).\n\n${e.text.slice(0, 6000)}` }]);
+    save(); toast("분석 완료!"); render();
+  } catch (x) {
+    if (!S.settings.apiKey.trim()) { e.ai = localEngAnalysis(e.text); save(); toast("API 키가 없어 간단 분석만 보여 드려요.", 5000); render(); }
+    else toast("⚠ " + x.message, 6000);
+  }
+};
+
+/* ----- 컨디션 ----- */
+views.body = () => {
+  const t = today(), c = condition(t), sl = S.sleep[t] || {}, us = S.usage[t] || {};
+  const days = Array.from({ length: 7 }, (_, i) => addDays(t, i - 6));
+  const uv = days.map(d => (S.usage[d] || {}).minutes).filter(x => x != null);
+  return `<div class="card"><h2>🛌 어젯밤 수면</h2>
+    <div class="row"><div><label>수면 시간(시간)</label><input id="slH" type="number" step="0.1" value="${sl.hours ?? ""}" placeholder="7.5"></div><div><label>수면 질(1~5)</label><input id="slQ" type="number" min="1" max="5" value="${sl.quality ?? 3}"></div></div>
+    <h2 style="margin-top:12px">📱 어제 스마트폰 사용</h2>
+    <div class="row"><div><label>총 사용 시간(분)</label><input id="usM" type="number" value="${us.minutes ?? ""}" placeholder="210"></div><button class="btn" data-act="saveBody">저장</button></div>
+    <p class="muted">수면은 오늘 공부 강도에 반영되고, 스마트폰 사용 시간은 일정에 영향 없이 통계로만 쓰여요.</p></div>
+  <div class="card"><h2>📊 최근 7일</h2>
+    ${c ? `<span class="score">${c.score}</span> <span class="pill dark">공부 강도 ${c.level.name}</span>${c.notes.map(n => `<div class="muted">• ${esc(n)}</div>`).join("")}` : `<div class="muted">수면 데이터를 입력하면 분석해 드려요.</div>`}
+    ${us.minutes != null ? `<div class="muted">• ${us.minutes > 300 ? "스마트폰을 많이 썼어요. 공부 중엔 방해금지 모드를 켜 보세요." : us.minutes > 180 ? "스마트폰 사용이 다소 많아요." : "스마트폰 사용 습관이 좋아요 👍"}</div>` : ""}
+    ${uv.length ? `<div class="muted">평균 사용 ${Math.round(avg(uv))}분</div>` : ""}
+    <h3>수면(시간)</h3>${bars(days.map(d => ({ l: d.slice(8), v: (S.sleep[d] || {}).hours ?? null, hi: d === t })), { max: 10 })}
+    <h3>스마트폰 사용(분)</h3>${bars(days.map(d => ({ l: d.slice(8), v: (S.usage[d] || {}).minutes ?? null, hi: d === t })))}</div>`;
+};
+acts.saveBody = () => {
+  const t = today();
+  if (val("slH")) S.sleep[t] = { hours: +val("slH"), quality: Math.min(5, Math.max(1, +val("slQ") || 3)) };
+  if (val("usM")) S.usage[t] = { minutes: +val("usM") };
+  save(); toast("저장! 오늘 시간표에 반영됐어요."); render();
+};
+/* ----- 캘린더 (클릭해서 일정 · 시험 추가) + 퀴즈 ----- */
+views.review = () => {
+  const [y, m] = calMonth.split("-").map(Number), first = new Date(y, m - 1, 1).getDay(), last = new Date(y, m, 0).getDate();
+  const cutoffs = S.exams.map(cutoffOf);
+  let cells = ["일", "월", "화", "수", "목", "금", "토"].map(d => `<div class="h">${d}</div>`).join("") + "<div class='h'></div>".repeat(first);
+  for (let d = 1; d <= last; d++) {
+    const ds = `${y}-${pad(m)}-${pad(d)}`, rn = S.reviews.filter(r => r.due === ds && !r.done).length, en = S.events.filter(e => e.date === ds).length;
+    const ex = S.exams.filter(e => e.date === ds), sc = (S.neis.sched[ds] || []).length, mn = S.memos.filter(m => m.date === ds).length;
+    const dow = new Date(ds + "T00:00:00").getDay(), rest = isOff(ds), hol = isSchool() && dow > 0 && dow < 6 && isHoliday(ds);
+    cells += `<div class="${ds === today() ? "today" : ""} ${rest || hol ? "off" : ""} ${ds === calSel ? "sel" : ""}" data-act="selDay" data-d="${ds}">${d}${rest ? " <b>쉬는날</b>" : hol ? " <b>휴업</b>" : ""}${mn ? `<br>✎${mn}` : ""}
+      ${ex.length ? `<br><span class="exam">시험</span>` : ""}${cutoffs.includes(ds) ? "<br>⏹마감" : ""}${rn ? `<br>●${rn}` : ""}${en ? `<br>▫${en}` : ""}${sc ? `<br>·학사` : ""}</div>`;
+  }
+  const dayRev = S.reviews.filter(r => r.due === calSel), dayEv = S.events.filter(e => e.date === calSel), dayEx = S.exams.filter(e => e.date === calSel);
+  const sc = S.neis.sched[calSel] || [], tt = S.neis.timetable[calSel], meal = S.neis.meals[calSel];
+  return `<div class="card"><div class="row"><button class="btn sec sm" data-act="mon" data-n="-1">◀</button><h2 style="text-align:center;margin:0">${y}년 ${m}월</h2><button class="btn sec sm" data-act="mon" data-n="1">▶</button></div>
+    <div class="cal" style="margin-top:8px">${cells}</div><div class="muted">날짜를 눌러 일정·시험을 추가하세요. ●복습 ▫일정 ⏹시험 1주 전 복습 마감 · 복습 간격 1·3·7·14·30일</div></div>
+  <div class="card"><h2>${calSel}</h2>
+    <div class="seg"><button class="btn ${addMode === "event" ? "" : "sec"}" data-act="addMode" data-m="event">＋ 일정</button><button class="btn ${addMode === "exam" ? "" : "sec"}" data-act="addMode" data-m="exam">＋ 시험</button><button class="btn ${addMode === "memo" ? "" : "sec"}" data-act="addMode" data-m="memo">＋ 메모</button><button class="btn ${isOff(calSel) ? "" : "sec"}" data-act="toggleOff">${isOff(calSel) ? "🛌 휴무 해제" : "🛌 휴무"}</button></div>
+    ${isOff(calSel) ? `<div class="muted">휴무일: 이 날은 공부 계획이 잡히지 않고, 복습은 다른 날로 옮겨져요.</div>` : ""}
+    ${addMode === "event" ? `<div class="row"><div><label>제목</label><input id="cT"></div><div><label>시작</label><input id="cS" type="time" value="16:00"></div><div><label>끝</label><input id="cE" type="time" value="18:00"></div><button class="btn" data-act="addCalEvent">추가</button></div>` : ""}
+    ${addMode === "exam" ? `<div class="row"><div><label>시험 이름</label><input id="xT" placeholder="중간고사"></div></div>
+      <label>시험 당일 볼 과목 (여러 개 선택, 선택 안 하면 전체)</label>
+      <div class="seg" style="flex-wrap:wrap">${["국어", "영어", "수학", "사회", "과학", "한국사"].map(s => `<label style="display:flex;gap:4px;align-items:center;margin:0;color:var(--tx);font-size:14px"><input type="checkbox" class="xSub" value="${s}" style="width:auto">${s}</label>`).join("")}</div>
+      <div class="row"><div><label>기타 과목 (쉼표로 구분)</label><input id="xO"></div><button class="btn" data-act="addExam">추가</button></div><div class="muted">시험 7일 전까지 해당 과목 복습이 끝나도록 자동 재배치돼요.</div>` : ""}
+    ${dayEx.map(e => `<div class="slot"><div class="n"><b>📝 ${esc(e.title)}</b> ${examSubs(e).length ? examSubs(e).map(s => `<span class="pill dark">${esc(s)}</span>`).join(" ") : `<span class="pill dark">전체</span>`}<div class="muted">복습 마감 ${cutoffOf(e)}</div></div><button class="btn sm bad" data-act="delExam" data-id="${e.id}">삭제</button></div>`).join("")}
+    ${sc.map(e => `<div class="slot"><div class="t">학사일정</div><div class="n">${esc(e.n)}</div></div>`).join("")}
+    ${addMode === "memo" ? `<div class="row"><div><label>메모</label><input id="mmT" placeholder="내용을 적으세요"></div><button class="btn" data-act="addMemo">추가</button></div>` : ""}
+    ${S.memos.filter(m => m.date === calSel).map(m => `<div class="slot"><div class="t">메모</div><div class="n">✎ ${esc(m.text)}</div><button class="btn sm bad" data-act="delMemo" data-id="${m.id}">×</button></div>`).join("")}
+    ${dayEv.map(e => `<div class="slot"><div class="t">${e.start}–${e.end}</div><div class="n">📌 ${esc(e.title)}</div><button class="btn sm bad" data-act="delEvent" data-id="${e.id}">×</button></div>`).join("")}
+    ${dayRev.map(r => `<div class="slot"><div class="n">${r.done ? "✅" : "🔁"} ${esc(r.title)} <span class="pill">${r.n}회차</span></div>${r.done ? "" : `<button class="btn sm sec" data-act="doneReview" data-id="${r.id}">완료</button>`}</div>`).join("")}
+    ${tt ? `<div class="muted">시간표: ${tt.map(x => `${x.p}.${esc(x.c)}`).join(" ")}</div>` : ""}${meal ? `<div class="muted">급식: ${meal.map(x => esc(x.m + " " + x.n)).join(" / ")}</div>` : ""}
+    <button class="btn sm sec" data-act="rebal" style="margin-top:8px">복습 일정 재조정</button></div>
+  <div class="card"><h2>🎯 오늘의 맞춤 복습 퀴즈 <span class="muted">(어제 공부 + 오답 기반)</span></h2>${quizBox()}</div>`;
+};
+acts.addMemo = () => {
+  if (!val("mmT").trim()) return toast("메모 내용을 입력해 주세요.");
+  S.memos.push({ id: uid(), date: calSel, text: val("mmT").trim() }); save(); addMode = null; render();
+};
+acts.delMemo = d => { S.memos = S.memos.filter(m => m.id !== d.id); save(); render(); };
+acts.toggleOff = () => {
+  S.dayOffs = isOff(calSel) ? S.dayOffs.filter(d => d !== calSel) : [...S.dayOffs, calSel];
+  planReviews(true); save(); toast(isOff(calSel) ? "휴무일로 지정했어요. 복습은 다른 날로 옮겼어요." : "휴무를 해제했어요."); render();
+};
+acts.selDay = d => { calSel = d.d; render(); };
+acts.addMode = d => { addMode = addMode === d.m ? null : d.m; render(); };
+acts.mon = d => { const [y, m] = calMonth.split("-").map(Number); calMonth = ymd(new Date(y, m - 1 + +d.n, 1)).slice(0, 7); render(); };
+acts.addCalEvent = () => {
+  const e = { id: uid(), title: val("cT") || "일정", date: calSel, start: val("cS"), end: val("cE") };
+  if (toMin(e.end) <= toMin(e.start)) return toast("끝나는 시간이 시작보다 늦어야 해요.");
+  S.events.push(e); save(); addMode = null; render();
+};
+acts.addExam = () => {
+  const subs = [...document.querySelectorAll(".xSub:checked")].map(c => c.value).concat(val("xO").split(",").map(s => s.trim()).filter(Boolean));
+  const e = { id: uid(), title: val("xT") || "시험", date: calSel, subs };
+  S.exams.push(e); addMode = null; planReviews(true); save();
+  toast(`시험 등록! ${cutoffOf(e)}까지 모든 복습이 끝나도록 일정을 짰어요.`, 5000); render();
+};
+acts.delExam = d => { S.exams = S.exams.filter(e => e.id !== d.id); save(); render(); };
+acts.rebal = () => { planReviews(false); render(); };
+
+function quizBox() {
+  const q = S.quizzes[today()];
+  if (!q) return `<button class="btn" data-act="genQuiz">퀴즈 만들기</button><p class="muted">API 키가 없으면 저장된 자료·오답에서 문제를 만들어요.</p>`;
+  return quizHtml(q.items, "dq") + ` <button class="btn sm sec" data-act="genQuiz">다시 만들기</button>`;
+}
+function quizSource() {
+  const y = addDays(today(), -1);
+  const ids = [...new Set(S.studyLog.filter(l => l.date === y && l.matId && !l.matId.startsWith("N:")).map(l => l.matId))];
+  let mats = ids.map(id => S.materials.find(m => m.id === id)).filter(Boolean);
+  const titles = S.studyLog.filter(l => l.date === y).map(l => l.title);
+  if (!mats.length) mats = S.materials.slice(-2);
+  const top = weakness().slice(0, 3).map(x => x.k);
+  const notes = S.notes.filter(n => n.date === y || top.includes(subName(n.sub) + " · " + topicOf(n))).slice(-6);
+  return { mats, titles, notes, top };
+}
+function clozeQuiz(mats) {
+  const sents = mats.flatMap(m => m.text.replace(/\[p\.\d+\]/g, "").split(/(?<=[.!?다요])\s+/)).filter(s => s.length > 25 && s.length < 200);
+  const words = [...new Set(sents.flatMap(s => s.match(/[가-힣A-Za-z]{3,}/g) || []))], items = [];
+  for (const s of sents.sort(() => Math.random() - .5)) {
+    const ws = (s.match(/[가-힣A-Za-z]{3,}/g) || []).filter(() => words.length > 4); if (!ws.length) continue;
+    const ans = ws[Math.floor(ws.length / 2)], wrong = words.filter(w => w !== ans).sort(() => Math.random() - .5).slice(0, 3);
+    if (wrong.length < 3) continue;
+    const choices = [...wrong, ans].sort(() => Math.random() - .5);
+    items.push({ q: "빈칸에 알맞은 말은? " + s.replace(ans, "_____"), choices, answer: choices.indexOf(ans), explain: `정답: ${ans}` });
+    if (items.length >= 5) break;
+  }
+  return items;
+}
+acts.genQuiz = async () => {
+  const { mats, titles, notes, top } = quizSource();
+  if (!mats.length && !notes.length) return toast("먼저 학습 자료나 오답노트를 저장해 주세요.");
+  const premade = notes.flatMap(n => (n.ai && n.ai.quiz) || []);
+  toast("퀴즈 만드는 중…", 60000);
+  let items;
+  try {
+    const ctx = mats.map(m => `# ${m.title}\n${(m.ai ? m.ai.summary + "\n" : "") + m.text.slice(0, 3000)}`).join("\n\n");
+    const weak = notes.map(n => `- ${subName(n.sub)} ${topicOf(n)}: ${(n.ai && n.ai.concept) || n.text || ""}`.slice(0, 200)).join("\n");
+    const r = await gemini([{ text: `학생이 어제 공부한 내용(${titles.join(", ")})과 취약 개념이다. 복습용 4지선다 5문제를 JSON {${QUIZ_SCHEMA}} 로 한국어로 출제해라. 취약 개념(${top.join(", ") || "없음"})에서 최소 2문제를 포함해라.\n\n[취약 개념]\n${weak}\n\n[학습 내용]\n${ctx}` }]);
+    items = r.quiz;
+  } catch (e) {
+    items = [...premade.slice(0, 3), ...clozeQuiz(mats)].slice(0, 5);
+    toast(S.settings.apiKey ? "⚠ AI 실패, 저장된 자료로 대체: " + e.message : "API 키가 없어 저장된 자료로 퀴즈를 만들었어요.", 5000);
+  }
+  if (!items || !items.length) return toast("퀴즈를 만들 수 없어요(자료가 너무 짧아요).");
+  S.quizzes[today()] = { items }; save(); render();
+};
+
+/* ----- 집중 타이머 + 백색소음 ----- */
+let tm = { left: 25 * 60, run: false, h: null, total: 25 * 60, subj: "기타" }, au = { ctx: null, src: null, gain: null };
+views.focus = () => `<div class="card"><h2>⏱ 집중 타이머</h2><div class="timer" id="tmView">${tmFmt()}</div>
+  <div class="row"><div><label>과목</label><select id="tmSub" data-act="tmSubSet">${["기타", ...S.subjects.map(s => s.name)].map(n => `<option ${n === tm.subj ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></div><div><label>집중(분)</label><input id="tmMin" type="number" value="${tm.total / 60}"></div><button class="btn" data-act="tmStart">${tm.run ? "일시정지" : "시작"}</button><button class="btn sec" data-act="tmReset">리셋</button></div>
+  <p class="muted">완료 시 학습 기록에 자동 저장됩니다.</p></div>
+  <div class="card"><h2>🌧 백색소음</h2><div class="row"><div><label>종류</label><select id="noiseT"><option value="white">화이트</option><option value="pink">핑크</option><option value="brown">브라운</option></select></div>
+  <div><label>볼륨</label><input id="noiseV" type="range" min="0" max="1" step="0.05" value="0.3"></div><button class="btn" data-act="noise">${au.src ? "끄기" : "켜기"}</button></div></div>`;
+const tmFmt = () => `${pad(Math.floor(tm.left / 60))}:${pad(tm.left % 60)}`;
+acts.tmStart = () => {
+  if (tm.run) { clearInterval(tm.h); tm.run = false; return render(); }
+  if (tm.left === tm.total) tm.total = tm.left = Math.max(1, +val("tmMin") || 25) * 60;
+  tm.run = true;
+  tm.h = setInterval(() => {
+    tm.left--; const v = $("#tmView"); if (v) v.textContent = tmFmt();
+    if (tm.left <= 0) {
+      clearInterval(tm.h); tm.run = false; beep(); S.studyLog.push({ date: today(), title: "집중 타이머", subj: tm.subj, min: Math.round(tm.total / 60) }); save();
+      tm.left = tm.total; toast("🎉 집중 완료! 5분 쉬어요."); if (tab === "focus") render();
+    }
+  }, 1000);
+  render();
+};
+acts.tmReset = () => { clearInterval(tm.h); tm.run = false; tm.total = tm.left = Math.max(1, +val("tmMin") || 25) * 60; render(); };
+function beep() { try { const c = new (window.AudioContext || window.webkitAudioContext)(), o = c.createOscillator(); o.connect(c.destination); o.frequency.value = 880; o.start(); o.stop(c.currentTime + .6); } catch { } }
+acts.noise = () => {
+  if (au.src) { au.src.stop(); au.src = null; return render(); }
+  const c = au.ctx || (au.ctx = new (window.AudioContext || window.webkitAudioContext)()), type = val("noiseT"), len = c.sampleRate * 4, buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+  let b0 = 0, b1 = 0, b2 = 0, last = 0;
+  for (let i = 0; i < len; i++) {
+    const w = Math.random() * 2 - 1;
+    if (type === "white") d[i] = w;
+    else if (type === "pink") { b0 = .99765 * b0 + w * .099046; b1 = .963 * b1 + w * .2965164; b2 = .57 * b2 + w * 1.0526913; d[i] = (b0 + b1 + b2 + w * .1848) * .3; }
+    else { last = (last + .02 * w) / 1.02; d[i] = last * 3.5; }
+  }
+  au.src = c.createBufferSource(); au.src.buffer = buf; au.src.loop = true; au.gain = c.createGain(); au.gain.gain.value = +val("noiseV");
+  au.src.connect(au.gain).connect(c.destination); au.src.start(); c.resume(); render();
+};
+document.addEventListener("input", e => { if (e.target.id === "noiseV" && au.gain) au.gain.gain.value = +e.target.value; });
+document.addEventListener("change", e => { if (e.target.id === "tmSub") tm.subj = e.target.value; });
+
+/* ----- 통계 (이행률 · 공부 시간 · 수면 · 스마트폰) ----- */
+views.stats = () => {
+  const t = today(), n = rng === "day" ? 1 : rng === "week" ? 7 : 30;
+  const days = Array.from({ length: n }, (_, i) => addDays(t, i - n + 1)), cd = n === 1 ? Array.from({ length: 7 }, (_, i) => addDays(t, i - 6)) : days;
+  const st = days.map(dayStats), rates = st.filter(x => x.rate != null).map(x => x.rate), tot = st.reduce((a, x) => a + x.min, 0);
+  const us = days.map(d => (S.usage[d] || {}).minutes).filter(x => x != null), sl = days.map(d => (S.sleep[d] || {}).hours).filter(x => x != null);
+  const key = rng + "|" + t, ai = S.ai["rep"];
+  return `<div class="seg">${[["day", "하루"], ["week", "일주일"], ["month", "한 달"]].map(([k, l]) => `<button class="btn ${rng === k ? "" : "sec"}" data-act="rng" data-r="${k}">${l}</button>`).join("")}</div>
+  <div class="card"><h2>🎯 계획 대비 이행률</h2>
+    <div class="grid3"><div><div class="big">${rates.length ? Math.round(avg(rates)) + "%" : "-"}</div><div class="muted">평균 이행률</div></div>
+    <div><div class="big">${Math.floor(tot / 60)}h ${tot % 60}m</div><div class="muted">공부 시간</div></div>
+    <div><div class="big">${st.reduce((a, x) => a + x.done, 0)}/${st.reduce((a, x) => a + x.planned, 0)}</div><div class="muted">완료/계획</div></div></div>
+    ${n === 1 ? (st[0].items.length ? st[0].items.map(i => `<div class="slot"><div class="n">${i.ok ? "✅" : "⬜"} ${esc(i.t)}</div></div>`).join("") : `<div class="muted">오늘 계획 기록이 없어요.</div>`)
+      : bars(days.map(d => ({ l: d.slice(8), v: dayStats(d).rate, hi: d === t })), { max: 100 }) + `<div class="muted">일별 이행률(%)</div>`}</div>
+  <div class="card"><h2>⏱ 공부 시간 (분)</h2>${bars(cd.map(d => ({ l: d.slice(8), v: dayStats(d).min, hi: d === t })))}</div>
+  <div class="card"><h2>📱 스마트폰 사용 (분)</h2>${bars(cd.map(d => ({ l: d.slice(8), v: (S.usage[d] || {}).minutes ?? null, hi: d === t })))}
+    <div class="muted">${us.length ? `평균 ${Math.round(avg(us))}분 · ` : ""}일정 조정에는 반영하지 않고 통계로만 보여 줘요.</div></div>
+  <div class="card"><h2>🛌 수면 (시간)</h2>${bars(cd.map(d => ({ l: d.slice(8), v: (S.sleep[d] || {}).hours ?? null, hi: d === t })), { max: 10 })}
+    <div class="muted">${sl.length ? `평균 ${r1(avg(sl))}시간` : "데이터 없음"}</div></div>
+  <div class="card"><h2>🧠 종합 분석</h2>${reportLines(days).map(l => `<div style="margin:4px 0">• ${esc(l)}</div>`).join("")}
+    <button class="btn sm" data-act="repAI">AI 종합 리포트 작성</button>
+    ${ai ? `<h3>AI 리포트 (${ai.date} · ${ai.r})</h3><div style="white-space:pre-wrap">${esc(ai.text)}</div>` : ""}</div>`;
+};
+acts.rng = d => { rng = d.r; render(); };
+acts.repAI = async () => {
+  const n = rng === "day" ? 1 : rng === "week" ? 7 : 30, days = Array.from({ length: n }, (_, i) => addDays(today(), i - n + 1));
+  toast("AI 리포트 작성 중…", 60000);
+  try {
+    const text = await gemini([{ text: `다음은 학생의 최근 ${n}일 학습 통계다. 이행률·공부시간·수면·스마트폰·취약점의 연관성을 분석해 격려와 구체적 조언을 한국어 8줄 이내로 써라.\n${reportLines(days).join("\n")}` }], false);
+    S.ai.rep = { date: today(), r: rng, text }; save(); toast("완료"); render();
+  } catch (e) { toast("⚠ " + e.message, 6000); }
+};
+
+/* ----- 설정 (학교/NEIS 포함) ----- */
+views.settings = () => {
+  const s = S.settings, sc = S.school;
+  return `<div class="card"><h2>🏫 학교 설정 (NEIS)</h2>
+    ${sc ? `<div><b>${esc(sc.name)}</b> <span class="muted">${esc(sc.kind)} · ${esc(sc.addr || "")}</span></div>` : `<div class="muted">학교를 검색해 선택하세요.</div>`}
+    <div class="row"><div><label>학교 이름</label><input id="scQ" placeholder="예: 한빛중학교"></div><button class="btn" data-act="schoolSearch">검색</button></div>
+    ${schoolRes.map((r, i) => `<div class="slot"><div class="n">${esc(r.name)} <span class="muted">${esc(r.kind)} · ${esc(r.addr)}</span></div><button class="btn sm sec" data-act="schoolPick" data-i="${i}">선택</button></div>`).join("")}
+    <div class="row"><div><label>학년</label><input id="stG" type="number" min="1" value="${esc(s.grade)}"></div><div><label>반</label><input id="stC" type="number" min="1" value="${esc(s.cls)}"></div></div>
+    <label>NEIS 인증키 (선택 · <a href="https://open.neis.go.kr" target="_blank" rel="noopener">open.neis.go.kr</a>에서 무료 발급. 없으면 일부(5건)만 불러와요)</label><input id="stN" type="password" value="${esc(s.neisKey)}">
+    <p><button class="btn" data-act="neisSync">시간표 · 급식 · 학사일정 불러오기</button></p></div>
+  <div class="card"><h2>⏰ 학기중 / 방학 시간</h2>
+    <div class="row"><div><label>학기중 기상</label><input id="stWS" type="time" value="${s.wakeS}"></div><div><label>학기중 취침</label><input id="stSS" type="time" value="${s.sleepS}"></div></div>
+    <div class="row"><div><label>방학 기상</label><input id="stWV" type="time" value="${s.wakeV}"></div><div><label>방학 취침</label><input id="stSV" type="time" value="${s.sleepV}"></div></div>
+    <div class="row"><div><label>등교(수업 시작)</label><input id="stSt" type="time" value="${s.schoolStart}"></div><div><label>하교 (시간표 없을 때)</label><input id="stEn" type="time" value="${s.schoolEnd}"></div><div><label>수업 1교시(분)</label><input id="stPe" type="number" value="${s.period}"></div></div>
+    <label>요일별 하교 시간 (비워 두면 시간표 또는 기본 하교 시간 사용)</label>
+    <div class="row">${[1, 2, 3, 4, 5].map(i => `<div><label>${"일월화수목금토"[i]}</label><input class="stDay" data-d="${i}" type="time" value="${(s.endDay || {})[i] || ""}"></div>`).join("")}</div>
+    <p class="muted">학기중에는 시간표(없으면 하교 시간)만큼 '학교' 시간을 빼고 계획하고, 방학에는 하루 전체를 써요. 상단 버튼으로 전환하세요.</p></div>
+  <div class="card"><h2>🤖 AI · 기타</h2>
+    <label>Gemini API 키 (이 기기 localStorage에만 저장 · <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">무료 키 발급</a>)</label><input id="stK" type="password" value="${esc(s.apiKey)}" placeholder="AIza...">
+    <label>모델</label><input id="stM" value="${esc(s.model)}">
+    <label>영어 지문 CORS 프록시</label><select id="stP"><option value="allorigins" ${s.proxy === "allorigins" ? "selected" : ""}>allorigins</option><option value="corsproxy" ${s.proxy === "corsproxy" ? "selected" : ""}>corsproxy.io</option></select>
+    <p><button class="btn" data-act="saveSet">저장</button></p></div>
+  <div class="card"><h2>🔒 개인정보 안내</h2><p class="muted">모든 학습 데이터·수면·사용시간은 이 브라우저(localStorage)에만 저장되며 운영자 서버가 없습니다. AI 분석 시 업로드한 자료(축소된 텍스트/사진)만 사용자의 키로 Google Gemini API에 전송됩니다. 교과서·지문은 개인 학습 용도로만 사용하세요.</p>
+  <button class="btn sec" data-act="export">데이터 내보내기(JSON)</button> <button class="btn bad" data-act="wipe">전체 삭제</button></div>`;
+};
+function readSettings() {
+  S.settings.endDay = {}; document.querySelectorAll(".stDay").forEach(i => { if (i.value) S.settings.endDay[i.dataset.d] = i.value; });
+  Object.assign(S.settings, { grade: val("stG"), cls: val("stC"), neisKey: val("stN").trim(), wakeS: val("stWS"), sleepS: val("stSS"), wakeV: val("stWV"), sleepV: val("stSV"),
+    schoolStart: val("stSt"), schoolEnd: val("stEn"), period: +val("stPe") || 50, apiKey: val("stK").trim(), model: val("stM").trim() || "gemini-2.0-flash", proxy: val("stP") });
+}
+acts.saveSet = () => { readSettings(); save(); toast("저장됨"); };
+acts.schoolSearch = async () => {
+  readSettings(); if (!val("scQ").trim()) return toast("학교 이름을 입력해 주세요.");
+  toast("검색 중…", 30000);
+  try {
+    schoolRes = (await neis("schoolInfo", { SCHUL_NM: val("scQ").trim() })).map(r => ({ name: r.SCHUL_NM, atpt: r.ATPT_OFCDC_SC_CODE, code: r.SD_SCHUL_CODE, kind: r.SCHUL_KND_SC_NM, addr: r.ORG_RDNMA || "" }));
+    toast(schoolRes.length ? `${schoolRes.length}개 학교를 찾았어요.` : "검색 결과가 없어요.");
+  } catch (e) { toast("⚠ " + e.message, 5000); }
+  save(); render();
+};
+acts.schoolPick = d => { const r = schoolRes[+d.i]; S.school = { ...r, ep: EP[r.kind] || "spsTimetable" }; schoolRes = []; save(); render(); };
+acts.neisSync = async () => {
+  readSettings(); const sc = S.school; if (!sc) return toast("먼저 학교를 선택해 주세요."); save();
+  toast("NEIS에서 불러오는 중…", 90000);
+  const base = { ATPT_OFCDC_SC_CODE: sc.atpt, SD_SCHUL_CODE: sc.code }, t = today(), mon = addDays(t, -((new Date(t + "T00:00:00").getDay() + 6) % 7)), fails = [], got = [];
+  const run = async (name, f) => { try { got.push(name + " " + await f()); } catch (e) { fails.push(name + ": " + e.message); } };
+  await run("시간표", async () => {
+    if (!S.settings.grade || !S.settings.cls) throw new Error("학년/반을 입력해 주세요");
+    const rows = await neis(sc.ep, { ...base, GRADE: S.settings.grade, CLASS_NM: S.settings.cls, TI_FROM_YMD: compact(mon), TI_TO_YMD: compact(addDays(mon, 13)) });
+    for (let i = 0; i < 14; i++) delete S.neis.timetable[addDays(mon, i)];
+    rows.forEach(r => (S.neis.timetable[dashed(r.ALL_TI_YMD)] = S.neis.timetable[dashed(r.ALL_TI_YMD)] || []).push({ p: r.PERIO, c: r.ITRT_CNTNT }));
+    Object.values(S.neis.timetable).forEach(a => a.sort((x, y) => x.p - y.p));
+    return rows.length + "건";
+  });
+  await run("급식", async () => {
+    const rows = await neis("mealServiceDietInfo", { ...base, MLSV_FROM_YMD: compact(addDays(t, -3)), MLSV_TO_YMD: compact(addDays(t, 40)) });
+    rows.forEach(r => { const d = dashed(r.MLSV_YMD); S.neis.meals[d] = (S.neis.meals[d] || []).filter(x => x.m !== r.MMEAL_SC_NM); S.neis.meals[d].push({ m: r.MMEAL_SC_NM, n: cleanDish(r.DDISH_NM) }); });
+    return rows.length + "건";
+  });
+  await run("학사일정", async () => {
+    const rows = await neis("SchoolSchedule", { ...base, AA_FROM_YMD: compact(addDays(t, -30)), AA_TO_YMD: compact(addDays(t, 200)) });
+    S.neis.sched = {}; rows.forEach(r => (S.neis.sched[dashed(r.AA_YMD)] = S.neis.sched[dashed(r.AA_YMD)] || []).push({ n: r.EVENT_NM, t: r.SBTR_DD_SC_NM }));
+    return rows.length + "건";
+  });
+  save(); toast((got.length ? "불러옴: " + got.join(", ") : "") + (fails.length ? " ⚠ " + fails.join(" / ") : ""), 8000); render();
+};
+acts.export = () => { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify({ ...S, settings: { ...S.settings, apiKey: "", neisKey: "" } }, null, 1)], { type: "application/json" })); a.download = "studyloop-backup.json"; a.click(); };
+acts.wipe = () => { if (confirm("모든 데이터를 삭제할까요?")) { localStorage.removeItem(KEY); S = defaults(); render(); } };
+
+/* ========== 이벤트 ========== */
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  if (b.tagName === "A") e.preventDefault();
+  const f = acts[b.dataset.act]; if (f) f(b.dataset, b);
+});
+planReviews(false);
+render();
+</script>
+</body>
+</html>
